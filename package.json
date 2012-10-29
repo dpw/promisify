@@ -1,0 +1,17 @@
+{
+    "name": "promisify",
+    "version": "0.0.1",
+    "author": "David Wragg <david@wragg.org>",
+    "description": "Convert callback-based APIs to promises",
+    "main": "promisify.js",
+    "dependencies": {
+        "when": ""
+    },
+    "devDependencies": {
+        "nodeunit": ""
+    },
+    "scripts" : {
+        "test" : "node ./node_modules/nodeunit/bin/nodeunit test"
+    }
+}
+
