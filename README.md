@@ -33,3 +33,6 @@ driver API to Promises:
     });
 
     var mongodb = promisify_mongodb(require('mongodb'));
+
+Promisify is built upon the [when.js](https://github.com/cujojs/when)
+implementation of promises.
