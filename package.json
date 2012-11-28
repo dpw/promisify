@@ -1,9 +1,12 @@
 {
     "name": "promisify",
-    "version": "0.0.2",
-    "author": "David Wragg <david@wragg.org>",
+    "version": "0.0.3",
+    "author": "David Wragg <david@wragg.org> (http://david.wragg.org)",
     "description": "Convert callback-based APIs to promises",
-    "homepage": "https://github.com/dpw/promisify",
+    "repository": {
+        "type": "git",
+        "url": "git://github.com/dpw/promisify.git"
+    },
     "main": "promisify.js",
     "dependencies": {
         "when": ""
