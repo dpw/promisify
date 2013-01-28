@@ -89,10 +89,6 @@ module.exports.promptly = ptest(function (assert) {
     });
 });
 
-function cb_identity(val, cb) {
-    process.nextTick(function () { cb(null, val); });
-}
-
 // Wrap a function in a object, making sure that 'this' gets the right value
 function wrap_func(f, assert) {
     var obj = {
@@ -157,6 +153,10 @@ module.exports.func_transform_result = ptest(function (assert) {
 });
 
 
+function cb_identity(val, cb) {
+    process.nextTick(function () { cb(null, val); });
+}
+
 // Convert cb_identity into a function returning a promise.
 module.exports.cb_func = ptest(function (assert) {
     return promisify.cb_func()(cb_identity)(42).then(function (res) {
@@ -203,6 +203,18 @@ module.exports.cb_func_promise_obj_error = ptest(function (assert) {
 module.exports.cb_func_transform_result = ptest(function (assert) {
     return promisify.cb_func(function (p) { return p.then(double); })(cb_identity)(42).then(function (res) {
         assert.equal(res, 84);
+    });
+});
+
+
+function cb_identity_vo(val, cb) {
+    process.nextTick(function () { cb(val); });
+}
+
+// A value-only callback
+module.exports.cb_func_value_only = ptest(function (assert) {
+    return promisify.cb_func_value_only()(cb_identity_vo)(42).then(function (res) {
+        assert.equal(res, 42);
     });
 });
 

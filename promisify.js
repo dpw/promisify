@@ -59,7 +59,7 @@ function promisify_func(result_transformer) {
 // Produces a transformer that takes a promised function
 // taking a callback, and returns a function returning a promise,
 // optionally transforming that promise.
-function promisify_cb_func(result_transformer) {
+function promisify_cb_func_generic(result_transformer, cb_generator) {
     result_transformer = result_transformer || identity;
 
     var transformer = function (func_promise) {
@@ -67,13 +67,7 @@ function promisify_cb_func(result_transformer) {
             var args = arguments;
             return result_transformer(when(func_promise, function (func) {
                 var d = when.defer();
-                func.apply(null, append(args, function (err, val) {
-                    if (err) {
-                        d.reject(err);
-                    } else {
-                        d.resolve(val);
-                    }
-                }));
+                func.apply(null, append(args, cb_generator(d)));
                 return d.promise;
             }));
         };
@@ -84,19 +78,33 @@ function promisify_cb_func(result_transformer) {
             var args = arguments;
             return result_transformer(when(obj_promise, function (obj) {
                 var d = when.defer();
-                obj[prop].apply(obj, append(args, function (err, val) {
-                    if (err) {
-                        d.reject(err);
-                    } else {
-                        d.resolve(val);
-                    }
-                }));
+                obj[prop].apply(obj, append(args, cb_generator(d)));
                 return d.promise;
             }));
         };
     };
 
     return transformer;
+}
+
+function promisify_cb_func(result_transformer) {
+    return promisify_cb_func_generic(result_transformer, function (d) {
+        return function (err, val) {
+            if (err) {
+                d.reject(err);
+            } else {
+                d.resolve(val);
+            }
+        };
+    });
+}
+
+function promisify_cb_func_value_only(result_transformer) {
+    return promisify_cb_func_generic(result_transformer, function (d) {
+        return function (val) {
+            d.resolve(val);
+        };
+    });
 }
 
 // Produces a transformer that takes a promised object, and returns an
@@ -145,6 +153,7 @@ function promisify_read_stream() {
 exports.value = promisify_value;
 exports.func = promisify_func;
 exports.cb_func = promisify_cb_func;
+exports.cb_func_value_only = promisify_cb_func_value_only;
 exports.object = promisify_object;
 exports.read_stream = promisify_read_stream;
 exports.PStream = PStream;
