@@ -42,14 +42,6 @@ function promptly(val) {
     return d.promise;
 }
 
-module.exports.promptly = function (assert) {
-    timeout(assert, 5);
-    promptly(100).then(function (val) {
-        assert.equal(val, 100);
-        assert.done();
-    });
-};
-
 // Propogate an error from a promise as a normal exception.
 function vent(promise) {
     return promise.then(function () { return promise; },
@@ -61,7 +53,7 @@ function vent(promise) {
                         });
 }
 
-// Run a sequence of promise-based tests.  A test is a function that
+// Wrap a promise-based test.  A test is a is a function that
 //  returns a promise that triggers when the test is done.
 function tests(assert /* , tests... */) {
     var args = arguments;
@@ -80,6 +72,22 @@ function tests(assert /* , tests... */) {
 
     return vent(next());
 }
+
+function ptest(test, expecting) {
+    return function (assert) {
+        timeout(assert, 5);
+        assert.expect(expecting || 1);
+        return vent(test(assert).then(function () {
+            assert.done();
+        }));
+    };
+}
+
+module.exports.promptly = ptest(function (assert) {
+    return promptly(100).then(function (val) {
+        assert.equal(val, 100);
+    });
+});
 
 function cb_identity(val, cb) {
     process.nextTick(function () { cb(null, val); });
@@ -112,108 +120,108 @@ function double(n) {
     return n * 2;
 }
 
-module.exports.func = function (assert) {
-    timeout(assert, 5);
-    assert.expect(6);
-    tests(assert,
-          function () {
-              // Convert a function into a function returning a promise
-              return promisify.func()(double)(42).then(function (res) {
-                  assert.equal(res, 84);
-              });
-          },
-          function () {
-              // Convert a promise yielding a function into a function
-              // returning a promise
-              return promisify.func()(promptly(double))(43).then(function (res) {
-                  assert.equal(res, 86);
-              });
-          },
-          function () {
-              // Exceptions should get turned into errors
-              return promisify.func()(function () { throw new CustomError(); })().then(null, function (err) {
-                  assert.ok(err instanceof CustomError);
-              });
-          },
-          function () {
-              // for_property should take care of methods
-              return promisify.func().for_property(wrap_func(double, assert), 'prop')(44).then(function (res) {
-                  assert.equal(res, 88);
-              });
-          },
-          function () {
-              // Transform the result
-              return promisify.func(function (p) { return p.then(double); })(double)(45).then(function (res) {
-                  assert.equal(res, 180);
-              });
-          });
-};
+// Convert a function into a function returning a promise
+module.exports.func = ptest(function (assert) {
+    return promisify.func()(double)(42).then(function (res) {
+        assert.equal(res, 84);
+    });
+});
 
-module.exports.cb_func = function (assert) {
-    timeout(assert, 5);
-    assert.expect(9);
-    tests(assert,
-          function () {
-              // Convert cb_identity into a function returning a promise.
-              return promisify.cb_func()(cb_identity)(42).then(function (res) {
-                  assert.equal(res, 42);
-              });
-          },
-          function () {
-              // Convert a promise yielding cb_identity into a
-              // function returning a promise.
-              return promisify.cb_func()(promptly(cb_identity))(43).then(function (res) {
-                  assert.equal(res, 43);
-              });
-          },
-          function () {
-              // Convert a promise yielding an object with a
-              // cb_identity property into a function returning a
-              // promise.
-              return promisify.cb_func().for_property(promptly(wrap_func(cb_identity, assert)), 'prop')(44).then(function (res) {
-                  assert.equal(res, 44);
-              });
-          },
-          // And now the same again for errors
-          function () {
-              return promisify.cb_func()(cb_error)().then(null, function (err) {
-                  assert.ok(err instanceof CustomError);
-              });
-          },
-          function () {
-              return promisify.cb_func()(promptly(cb_error))().then(null, function (err) {
-                  assert.ok(err instanceof CustomError);
-              });
-          },
-          function () {
-              return promisify.cb_func().for_property(promptly(wrap_func(cb_error, assert)), 'prop')().then(null, function (err) {
-                  assert.ok(err instanceof CustomError);
-              });
-          },
-          function () {
-              // Do a transformation of the result
-              return promisify.cb_func(function (p) { return p.then(double); })(cb_identity)(42).then(function (res) {
-                  assert.equal(res, 84);
-              });
-          });
-};
+// Convert a promise yielding a function into a function returning a
+// promise
+module.exports.func_promise = ptest(function (assert) {
+    return promisify.func()(promptly(double))(43).then(function (res) {
+        assert.equal(res, 86);
+    });
+});
 
-module.exports.object = function (assert) {
-    timeout(assert, 5);
-    assert.expect(4);
-    tests(assert,
-          function () {
-              return promisify.object({prop: promisify.func()})(wrap_func(double, assert)).prop(42).then(function (res) {
-                  assert.equal(res, 84);
-              });
-          },
-          function () {
-              return promisify.object({prop: promisify.cb_func()})(wrap_func(cb_identity, assert)).prop(43).then(function (res) {
-                  assert.equal(res, 43);
-              });
-          });
-    // TODO Test nested
-};
+// Exceptions should get turned into errors
+module.exports.func_error = ptest(function (assert) {
+    return promisify.func()(function () { throw new CustomError(); })().then(null, function (err) {
+        assert.ok(err instanceof CustomError);
+    });
+});
+
+// for_property should take care of methods
+module.exports.func_for_property = ptest(function (assert) {
+    return promisify.func().for_property(wrap_func(double, assert), 'prop')(44).then(function (res) {
+        assert.equal(res, 88);
+    });
+}, 2);
+
+// Transform the result
+module.exports.func_transform_result = ptest(function (assert) {
+    return promisify.func(function (p) { return p.then(double); })(double)(45).then(function (res) {
+        assert.equal(res, 180);
+    });
+});
+
+
+// Convert cb_identity into a function returning a promise.
+module.exports.cb_func = ptest(function (assert) {
+    return promisify.cb_func()(cb_identity)(42).then(function (res) {
+        assert.equal(res, 42);
+    });
+});
+
+// Convert a promise yielding cb_identity into a function returning a
+// promise.
+module.exports.cb_func_promise = ptest(function (assert) {
+    return promisify.cb_func()(promptly(cb_identity))(43).then(function (res) {
+        assert.equal(res, 43);
+    });
+});
+
+// Convert a promise yielding an object with a cb_identity property
+// into a function returning a promise.
+module.exports.cb_func_promise_obj = ptest(function (assert) {
+    return promisify.cb_func().for_property(promptly(wrap_func(cb_identity, assert)), 'prop')(44).then(function (res) {
+        assert.equal(res, 44);
+    });
+}, 2);
+
+// And now the same again for errors
+module.exports.cb_func_error = ptest(function (assert) {
+    return promisify.cb_func()(cb_error)().then(null, function (err) {
+        assert.ok(err instanceof CustomError);
+    });
+});
+
+module.exports.cb_func_promise_error = ptest(function (assert) {
+    return promisify.cb_func()(promptly(cb_error))().then(null, function (err) {
+        assert.ok(err instanceof CustomError);
+    });
+});
+
+module.exports.cb_func_promise_obj_error = ptest(function (assert) {
+    return promisify.cb_func().for_property(promptly(wrap_func(cb_error, assert)), 'prop')().then(null, function (err) {
+        assert.ok(err instanceof CustomError);
+    });
+}, 2);
+
+// Do a transformation of the result
+module.exports.cb_func_transform_result = ptest(function (assert) {
+    return promisify.cb_func(function (p) { return p.then(double); })(cb_identity)(42).then(function (res) {
+        assert.equal(res, 84);
+    });
+});
+
+
+// A function in an object
+module.exports.object_func = ptest(function (assert) {
+    return promisify.object({prop: promisify.func()})(wrap_func(double, assert)).prop(42).then(function (res) {
+        assert.equal(res, 84);
+    });
+}, 2);
+
+// A callback function in an object
+module.exports.object_cb_func = ptest(function (assert) {
+    return promisify.object({prop: promisify.cb_func()})(wrap_func(cb_identity, assert)).prop(43).then(function (res) {
+        assert.equal(res, 43);
+    });
+}, 2);
+
+// TODO Test nested objects
 
 // Make a simple read stream
 function test_read_stream() {
@@ -233,29 +241,26 @@ function test_read_stream() {
     return stream;
 }
 
-module.exports.read_stream = function (assert) {
-    timeout(assert, 5);
-    assert.expect(4);
-    tests(assert,
-          function () {
-              // Accumulate items from the test stream into a buffer
-              var buf =''
-              return promisify.read_stream()(test_read_stream()).map(function (val) { buf += val; }).then(function () {
-                  assert.equal(buf, '12345');
-              });
-          },
-          function () {
-              // In conjunction with promisify.func to convert a read
-              // stream returned from a method
-              var buf =''
-              return promisify.func(promisify.read_stream()).for_property(promptly(wrap_func(test_read_stream, assert)), 'prop')().map(function (val) { buf += val; }).then(function () {
-                  assert.equal(buf, '12345');
-              });
-          },
-          function () {
-              // Test error case
-              return promisify.read_stream()(test_read_stream()).map(function (val) { throw new CustomError(); }).then(null, function (err) {
-                  assert.ok(err instanceof CustomError);
-              });
-          });
-};
+// Accumulate items from the test stream into a buffer
+module.exports.read_stream = ptest(function (assert) {
+    var buf = '';
+    return promisify.read_stream()(test_read_stream()).map(function (val) { buf += val; }).then(function () {
+        assert.equal(buf, '12345');
+    });
+});
+
+// In conjunction with promisify.func to convert a read stream
+// returned from a method
+module.exports.read_stream_func = ptest(function (assert) {
+    var buf = '';
+    return promisify.func(promisify.read_stream()).for_property(promptly(wrap_func(test_read_stream, assert)), 'prop')().map(function (val) { buf += val; }).then(function () {
+        assert.equal(buf, '12345');
+    });
+}, 2);
+
+// Test error case
+module.exports.read_stream_error = ptest(function (assert) {
+    return promisify.read_stream()(test_read_stream()).map(function (val) { throw new CustomError(); }).then(null, function (err) {
+        assert.ok(err instanceof CustomError);
+    });
+});
