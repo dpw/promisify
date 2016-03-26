@@ -12,6 +12,9 @@ function append(arrlike /* , items... */) {
     return Array.prototype.slice.call(arrlike, 0).concat(Array.prototype.slice.call(arguments, 1));
 }
 
+function new_object() {
+    return {};
+}
 // Produces a transformer that takes a value and simply returns it.
 function promisify_value(result_transformer) {
     result_transformer = result_transformer || identity;
@@ -109,9 +112,10 @@ function promisify_cb_func_value_only(result_transformer) {
 
 // Produces a transformer that takes a promised object, and returns an
 // object with the properties transformed according to the template.
-function promisify_object(template) {
+function promisify_object(template, object_creator) {
+    object_creator = object_creator || new_object;
     var transformer = function (obj_promise) {
-        var res = {};
+        var res = object_creator(obj_promise);
         for (var prop in template) {
             res[prop] = template[prop].for_property(obj_promise, prop);
         }

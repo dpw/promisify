@@ -233,6 +233,20 @@ module.exports.object_cb_func = ptest(function (assert) {
     });
 }, 2);
 
+// A function with methods
+module.exports.function_as_object = ptest(function (assert) {
+    function baseFunc() {
+        return 'foo';
+    }
+    baseFunc.method = function() {
+        return 'bar';
+    };
+    var func = promisify.object({method: promisify.func()}, promisify.func())(baseFunc);
+    return when.all([func(),func.method()]).then(function(res) {
+        assert.deepEqual(res, ['foo', 'bar']);
+    });
+}, 1);
+
 // TODO Test nested objects
 
 // Make a simple read stream
