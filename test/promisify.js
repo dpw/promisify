@@ -263,7 +263,7 @@ function test_read_stream() {
             stream.emit('end');
         }
     }
-    process.nextTick(next);
+    setTimeout(next, 10);
     return stream;
 }
 
