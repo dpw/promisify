@@ -1,7 +1,8 @@
 {
     "name": "promisify",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "author": "David Wragg <david@wragg.org> (http://david.wragg.org)",
+    "license": "MIT",
     "description": "Convert callback-based APIs to promises",
     "repository": {
         "type": "git",
